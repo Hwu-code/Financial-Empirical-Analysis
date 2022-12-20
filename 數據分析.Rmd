@@ -1,0 +1,365 @@
+---
+title: "財務實證資料分析-作業4"
+author: "7110021065 吳憲中"
+date: "2021/10/27"
+output: html_document
+---
+```{r}
+library("png")
+library("Rcpp")
+library("RcppZiggurat")
+library("dplyr")
+library("tseries")
+library("forecast")
+library("randtests")
+library("ggplot2")
+library("Rfast")
+library("EnvStats")
+```
+
+```{r data, echo=TRUE}
+TW <- read.csv("C:/Users/stran/OneDrive/桌面/碩士班/碩一上/財務實證資料分析/作業4/TW2020.csv", header=T)
+TF <- read.csv("C:/Users/stran/OneDrive/桌面/碩士班/碩一上/財務實證資料分析/作業4/TF2020.csv", header=T)
+TW_open <- TW$X09.00.00
+TW_close <- TW$X13.30.00
+TW_return_daily <- diff(log(TW_close)) * 100
+TW_return_interday <- (log(TW_close) - log(TW_open))*100
+TW_cumulative_return_intraday<-(log(TW)-log(TW_open))*100
+TW_cumulative_return_intraday <- colMeans(TW_cumulative_return_intraday)
+TF<-na.omit(TF)
+TF_open <- TF$X08.46.00
+TF_close <- TF$X13.45.00
+TF_return_daily <- diff(log(TF_close)) * 100
+TF_return_interday <- (log(TF_close) - log(TF_open))*100
+TF_cumulative_return_intraday<-(log(TF)-log(TF_open))*100
+TF_cumulative_return_intraday <- colMeans(TF_cumulative_return_intraday)
+```
+##### About $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$,  
+##### We use the means of each columns to represent all elements in specific "t" to make there's only one element in each column and there's only one row.So we make this set to represent the **"specific $i$th day** . 
+
+# **Question1.**
+#### For the following test,we assume $\alpha=0.05$
+### **1-(a)**  
+#### Draw the time series plot for the samples $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$.
+```{r}
+graphics.off()
+win.graph()
+par(mfrow=c(2,1),mex=0.4)
+ts.plot(TW_close)
+ts.plot(TF_close)
+```
+
+### **1-(b)**  
+#### Are the samples $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$ random $?$
+```{r}
+runs.test(TW_close)
+runs.test(TF_close)
+```
+##### By the Run-tests,we know that $p-values$ of $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$ are **smaller** than $0.025$,  
+##### so they're **not random**.
+
+### **1-(c)**  
+#### Are the samples $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$ from Gaussian distributions $?$
+```{r}
+jarque.bera.test(TW_close)
+jarque.bera.test(TF_close)
+qqnorm(TW_close,main = "TW_close")
+qqline(TW_close)
+qqnorm(TF_close,main = "TF_close")
+qqline(TF_close)
+```
+  
+##### By the QQ-plot,it seems that $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** form **Gaussian distribution**.
+##### But by ***Jarque Bera Test*** their $p-value$ are **greater** than $0.025$,  
+##### which means $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$  
+##### are from **Gaussian distribution**.
+
+### **1-(d)**  
+#### Are the samples $\lbrace{P_{i,Tw}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{P_{i,Tf}^F,i=1,2,\ldots,n}\rbrace$ stationary $?$
+
+```{r}
+kpss.test(TW_close, null = "Trend")
+kpss.test(TF_close, null = "Trend")
+```
+
+##### By ***kpss.test*** we can see that both $p-value$ of sample are **smaller** than $critical\  value$,  
+##### so we have significance level to say the sample are **not stationary**.
+
+### **1-(e)**  
+#### Draw the time series plot for the samples $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$.
+
+```{r}
+graphics.off()
+win.graph()
+par(mfrow=c(2,1),mex=0.4)
+ts.plot(TW_return_daily)
+ts.plot(TF_return_daily)
+```
+
+### **1-(f)**  
+#### Are the samples $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$ random $?$
+```{r}
+runs.test(TW_return_daily )
+runs.test(TF_return_daily )
+```
+##### By the ***Run-tests***,we know that $p-values$ of $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$ are **greater** than $0.025$,  
+##### so they're **random**.
+### **1-(g)**  
+#### Are the samples $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$ from Gaussian distributions $?$
+```{r}
+jarque.bera.test(TW_return_daily)
+jarque.bera.test(TF_return_daily)
+qqnorm(TW_return_daily,main = "TW_return_daily")
+qqline(TW_return_daily)
+qqnorm(TF_return_daily,main = "TF_return_daily")
+qqline(TF_return_daily)
+```
+
+##### By the QQ-plot,it seems that $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** form **Gaussian distribution**.
+##### And by ***Jarque Bera Test*** their $p-value$ are **smaller** than $0.025$,  
+##### which means $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** from **Gaussian distribution**.
+### **1-(h)**  
+#### Are the samples $\lbrace{r_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{r_i^F,i=1,2,\ldots,n}\rbrace$} stationary $?$
+```{r}
+kpss.test(TW_return_daily, null = "Trend")
+kpss.test(TF_return_daily, null = "Trend")
+```
+##### By ***kpss.test*** we can see that both $p-value$ of sample are **greater** than $critical\  value$,  
+##### so we have significance level to say the sample are **stationary**.
+### **1-(i)**  
+#### Draw the time series plot for the samples $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$.
+```{r}
+graphics.off()
+win.graph()
+par(mfrow=c(2,1),mex=0.4)
+ts.plot(TW_return_interday)
+ts.plot(TF_return_interday)
+```
+
+### **1-(j)**  
+#### Are the samples $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$ random $?$
+```{r}
+runs.test(TW_return_interday )
+runs.test(TF_return_interday )
+```
+##### By the ***Run-tests***,we know that $p-values$ of $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$ are **greater** than $0.025$,  
+##### so they're **random**.
+### **1-(k)**  
+#### Are the samples $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$ from Gaussian distributions $?$
+```{r}
+jarque.bera.test(TW_return_interday)
+jarque.bera.test(TF_return_interday)
+qqnorm(TW_return_interday,main = "TW_return_interday")
+qqline(TW_return_interday)
+qqnorm(TF_return_interday,main = "TF_return_interday")
+qqline(TF_return_interday)
+```
+
+##### By the QQ-plot,it seems that $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** form **Gaussian distribution**.  
+##### And by ***Jarque Bera Test*** their $p-value$ are **smaller** than $0.025$,  
+##### which means $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** from **Gaussian distribution**.
+
+### **1-(l)**  
+#### Are the samples $\lbrace{Ir_i^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Ir_i^F,i=1,2,\ldots,n}\rbrace$ stationary $?$
+```{r}
+kpss.test(TW_return_daily, null = "Trend")
+kpss.test(TF_return_daily, null = "Trend")
+```
+##### By ***kpss.test*** we can see that both $p-value$ of sample are **greater** than $critical\  value$,  
+##### so we have significance level to say the sample are **stationary**.
+### **1-(m)**  
+#### Draw the time series plot for the samples $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ for a
+#### specific $i$.
+```{r}
+graphics.off()
+win.graph()
+par(mfrow=c(2,1),mex=0.4)
+ts.plot(TW_cumulative_return_intraday)
+ts.plot(TF_cumulative_return_intraday)
+```
+
+### **1-(n)**  
+#### Are the samples $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ for a specific $i$ random $?$
+```{r}
+runs.test(TW_cumulative_return_intraday )
+runs.test(TF_cumulative_return_intraday )
+```
+##### By the ***Run-tests***,we know that $pvalues$ of $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ are **smaller** than $0.025$,  
+##### so they're **not random**.
+### **1-(o)**  
+#### Are the samples $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ for a specific $i$ from Gaussian.
+#### distributions?
+```{r}
+jarque.bera.test(TW_cumulative_return_intraday)
+jarque.bera.test(TF_cumulative_return_intraday)
+qqnorm(TW_cumulative_return_intraday,main = "TW_cumulative_return_intraday")
+qqline(TW_cumulative_return_intraday)
+qqnorm(TF_cumulative_return_intraday,main = "TF_cumulative_return_intraday")
+qqline(TF_cumulative_return_intraday)
+```
+
+##### By the QQ-plot,it seems that $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$  
+##### are **not** form **Gaussian distribution**.  
+##### But by ***Jarque Bera Test*** ,  
+##### $p-value$ of $Cr_{i,t}^W$ is **greater** than $0.025$, which means $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ is from **Gaussian distribution**,  
+##### and $p-value$ of $Cr_{i,t}^F$ is **smaller** than $0.025$, which means $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ is **not** from **Gaussian distribution**.
+
+### **1-(p)**  
+#### Are the samples $\lbrace{Cr_{i,t}^W,i=1,2,\ldots,n}\rbrace$ and $\lbrace{Cr_{i,t}^F,i=1,2,\ldots,n}\rbrace$ for a specific $i$ stationary $?$
+```{r}
+kpss.test(TW_cumulative_return_intraday, null = "Trend")
+kpss.test(TF_cumulative_return_intraday, null = "Trend")
+```
+##### By ***kpss.test*** we can see that both $p-value$ of sample are **smaller** than $critical\  value$, 
+
+##### so we have significance level to say the sample are **not stationary**.
+
+# **Question2.**
+#### We assume $\alpha = 0.05$
+### **2-(a)**  
+#### Is the mean of close price of TAIEX equal to $10000 ?$
+```{r}
+meanTW_close<-mean(TW_close)
+stdTW_close<-sd(TW_close)
+nTW_close<-length(TW_close)
+mu0<-10000
+stderrTW_close <- stdTW_close /sqrt(nTW_close)
+zTW_close<-(meanTW_close-mu0)/stderrTW_close
+pvalue1<-pnorm(zTW_close)
+cat("z-value :",zTW_close,"mean :", meanTW_close,", std :",stdTW_close,"\n")
+if(pvalue1 < 0.5)
+{
+  pvalue1<-pvalue1
+}else
+{
+  pvalue1<-1-pvalue1
+}
+cat("p-value :",pvalue1, "\n")
+if(pvalue1 >= 0.025)
+{
+  cat("do not reject H0")
+}else
+{cat("reject H0")}
+```
+
+```{r}
+t.test(TW_close,mu=10000)
+```
+##### $H_0 : \mu = 10000$
+##### The p-value is **smaller** than $0.025$,reject $H_0$.  
+##### We have significant level to say that  
+##### the mean of close price of TAIEX is **not** equal to 10000.
+### **2-(b)**  
+#### Is the mean of the daily compound return of TAIEX equal to zero $?$
+```{r}
+meanTW_return_daily<-mean(TW_return_daily)
+stdTW_return_daily<-sd(TW_return_daily)
+nTW_return_daily<-length(TW_return_daily)
+mu1<-0
+stderrTW_return_daily <- stdTW_return_daily /sqrt(nTW_return_daily)
+zTW_return_daily<-(meanTW_return_daily-mu1)/stderrTW_return_daily
+pvalue2<-pnorm(zTW_return_daily)
+cat("mean :", meanTW_return_daily,", std :",stdTW_return_daily, "\n")
+if(pvalue2 < 0.5)
+{
+  pvalue2<-pvalue2
+}else
+{
+  pvalue2<-1-pvalue2
+}
+cat("p-value :",pvalue2, "\n")
+if(pvalue2 >= 0.025)
+{
+  cat("do not reject H0")
+}else
+{cat("reject H0")}
+```
+
+```{r}
+t.test(TW_return_daily)
+```
+##### $H_0 : \mu = 0$
+##### The p-value is **greater** than $0.025$,do not reject $H_0$.  
+##### we have significant level to say that  
+##### the mean of the daily compound return of TAIEX is equal to zero.
+### **2-(c)**  
+#### Is the variance of the daily compound return of TAIEX equal to $2.5 ?$
+```{r}
+nTW_return_daily<-length(TW_return_daily)
+stdTW_return_daily<-sd(TW_return_daily)
+df<-nTW_return_daily-1
+phivalue<-((nTW_return_daily-1)*(stdTW_return_daily)^2)/2.5
+
+pvalue <- pchisq(phivalue,df)
+if (pvalue < 0.5){
+   pvalue <- pvalue
+   }else{
+   pvalue <- 1- pvalue
+   }
+cat("phi-value :",phivalue,"p-value :",pvalue, "\n")
+if(pvalue >= 0.025)
+{
+  cat("do not reject H0")
+}else
+{cat("reject H0")}
+```
+
+```{r}
+varTest(TW_return_daily,sigma.squared = 2.5)
+```
+
+##### $H_0 : \sigma = 2.5$  
+##### The p-value is **smaller** than $0.025$,reject $H_0$.  
+##### we have significant level to say that  
+##### the variance of the daily compound return of TAIEX is **not** equal to 2.5.
+### **2-(d)**  
+#### Are the means of close prices of TAIEX Futures and TAIEX equal $?$
+```{r}
+meanTW_close1<-mean(TW_close)
+meanTF_close1<-mean(TF_close)
+mu2<-0
+n1<-length(TW_close)
+n2<-length(TF_close)
+stdTW_close1<-sd(TW_close)
+stdTF_close1<-sd(TF_close)
+stderr<-sqrt(((stdTW_close1)^2/n1)+((stdTF_close1)^2/n2))
+zvalue<-(meanTW_close1-meanTF_close1-mu2)/stderr
+pvalue4<-pnorm(zvalue)
+if(pvalue4 < 0.5)
+{
+  pvalue4<-pvalue4
+}else
+{
+  pvalue4<-1-pvalue4
+}
+cat("z-value :",zvalue,"p-value :",pvalue4, "\n")
+if(pvalue4 >= 0.025)
+{
+  cat("do not reject H0")
+}else
+{cat("reject H0")}
+```
+
+```{r}
+var.test(TW_close,TF_close)
+t.test(TW_close,TF_close ,var.equal = TRUE)
+```
+##### By ***var.test*** we know two samples' variance are equal.
+##### $H_0 : \mu_W = \mu_F$  
+##### The p-value is **greater** than $0.025$,do not reject $H_0$.  
+##### we have significant level to say that  
+##### the means of close prices of TAIEX Futures and TAIEX are equal.
+### **2-(e)**
+#### Are the variances of close prices of TAIEX Futures and TAIEX equal$?$
+```{r}
+var.test(TW_close,TF_close)
+```
+##### $H_0 : \sigma_W^2 = \sigma_F^2$  
+##### The p-value is **greater** than $0.025$,do not reject $H_0$.  
+##### we have significant level to say that  
+##### the variances of close prices of TAIEX Futures and TAIEX are equal.
